@@ -1,0 +1,13 @@
+Bundled seals (Philippine government works)
+
+- nbi_clearance.png — derived from Wikimedia Commons
+  File:National_Bureau_of_Investigation_(NBI).svg
+  Licence: PD-PhilippinesGov
+
+- ph_drivers_license.png — derived from Wikimedia Commons
+  File:Land_Transportation_Office.svg
+  Licence: PD-PhilippinesGov
+
+Source: https://commons.wikimedia.org/
+
+These thumbnails are resized PNG renders for in-app badges only. Refer to Wikimedia Commons for originals and citation.

@@ -1,0 +1,18 @@
+export const PHILIPPINE_BANK_SUGGESTIONS = [
+  'BDO',
+  'BPI',
+  'Landbank',
+  'Metrobank',
+  'China Bank',
+  'RCBC',
+  'Security Bank',
+  'PNB',
+  'UnionBank',
+  'DBP',
+  'EastWest',
+  'AUB',
+  'HSBC',
+  'Maya',
+  'CIMB',
+  'GoTyme',
+] as const;
