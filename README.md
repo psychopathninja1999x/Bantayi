@@ -14,7 +14,7 @@
 
 ## About BanTayi
 
-**BanTayi** (from *bantay*, “to watch over”) is an **offline-first** mobile app for people who want one reliable vault for expiry dates, warranty windows, and the paperwork behind daily life. The experience is built around clear status, gentle reminders, and the **Bantay** mascot—a friendly guide through your home, vault, and settings.
+**BanTayi** (from Cebuano word *bantay/bantayi*, “to watch over”) is an **offline-first** mobile app for people who want one reliable vault for expiry dates, warranty windows, and the paperwork behind daily life. The experience is built around clear status, gentle reminders, and the **Bantay** mascot—a friendly guide through your home, vault, and settings.
 
 Everything is designed for **local-first** use: your items, photos, and PIN live on your device. There is no mandatory cloud account, no backend server bundled with the app, and no deliberate shipping of your vault data to a third-party service.
 
