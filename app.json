@@ -9,16 +9,22 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "icon": "./assets/images/bantayilogo.png"
     },
     "android": {
+      "icon": "./assets/images/bantayilogo.png",
       "adaptiveIcon": {
         "backgroundColor": "#f8faf7",
         "foregroundImage": "./assets/images/bantayilogo.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "android.permission.RECORD_AUDIO"
+      ],
+      "package": "com.psychopathninja.BanTayi"
     },
     "web": {
       "output": "static",
@@ -60,6 +66,17 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {
+        "headers": {
+          "Cross-Origin-Embedder-Policy": "credentialless",
+          "Cross-Origin-Opener-Policy": "same-origin"
+        }
+      },
+      "eas": {
+        "projectId": "30e2e458-4f88-4cdb-916c-5f6cfa69cbb9"
+      }
     }
   }
 }
