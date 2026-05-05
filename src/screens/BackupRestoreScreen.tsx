@@ -26,9 +26,11 @@ export default function BackupRestoreScreen() {
       const result = await createEncryptedBackup(backupPassphrase);
       Alert.alert(
         'Backup created',
-        result.shared
-          ? `${result.itemCount} items and ${result.assetCount} files were packed into ${result.filename}.`
-          : `${result.itemCount} items and ${result.assetCount} files were saved at ${result.uri}.`,
+        result.savedToFileManager
+          ? `${result.itemCount} items and ${result.assetCount} files were saved to ${result.filename}.`
+          : result.shared
+            ? `${result.itemCount} items and ${result.assetCount} files were packed into ${result.filename}.`
+            : `${result.itemCount} items and ${result.assetCount} files were saved at ${result.uri}.`,
       );
     } catch (e) {
       const message = e instanceof Error ? e.message : 'Could not create backup.';

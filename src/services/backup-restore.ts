@@ -7,9 +7,11 @@ import {
   makeDirectoryAsync,
   readAsStringAsync,
   writeAsStringAsync,
+  StorageAccessFramework,
 } from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import * as Crypto from 'expo-crypto';
+import { Platform } from 'react-native';
 
 import { getAllItems, replaceAllItems } from '@/src/database';
 import type { Item } from '@/src/types';
@@ -70,6 +72,7 @@ export interface BackupResult {
   itemCount: number;
   assetCount: number;
   shared: boolean;
+  savedToFileManager: boolean;
 }
 
 export interface RestoreResult {
@@ -261,15 +264,54 @@ async function ensureRestoreAssetDirectory(): Promise<string> {
   return dir;
 }
 
+function backupFilenameForToday(): string {
+  const stamp = new Date().toISOString().slice(0, 10);
+  return `BanTayiBackup-${stamp}.${BACKUP_EXT}`;
+}
+
+async function saveBackupWithAndroidFileManager(
+  filename: string,
+  contents: string,
+): Promise<string | null> {
+  if (Platform.OS !== 'android') return null;
+
+  const permissions = await StorageAccessFramework.requestDirectoryPermissionsAsync();
+  if (!permissions.granted) return null;
+
+  const baseName = filename.replace(new RegExp(`\\.${BACKUP_EXT}$`), '');
+  const fileUri = await StorageAccessFramework.createFileAsync(
+    permissions.directoryUri,
+    baseName,
+    BACKUP_MIME,
+  );
+  await StorageAccessFramework.writeAsStringAsync(fileUri, contents, {
+    encoding: EncodingType.UTF8,
+  });
+  return fileUri;
+}
+
 export async function createEncryptedBackup(passphraseInput: string): Promise<BackupResult> {
   const passphrase = requirePassphrase(passphraseInput);
   const payload = await buildPayload();
   const envelope = await encryptPayload(payload, passphrase);
+  const contents = JSON.stringify(envelope);
+  const filename = backupFilenameForToday();
+
+  const savedUri = await saveBackupWithAndroidFileManager(filename, contents);
+  if (savedUri) {
+    return {
+      uri: savedUri,
+      filename,
+      itemCount: payload.items.length,
+      assetCount: payload.assets.length,
+      shared: false,
+      savedToFileManager: true,
+    };
+  }
+
   const dir = cacheDirectory ?? (await ensureBackupDirectory());
-  const stamp = new Date().toISOString().slice(0, 10);
-  const filename = `BanTayiBackup-${stamp}.${BACKUP_EXT}`;
   const uri = `${dir}${filename}`;
-  await writeAsStringAsync(uri, JSON.stringify(envelope), { encoding: EncodingType.UTF8 });
+  await writeAsStringAsync(uri, contents, { encoding: EncodingType.UTF8 });
 
   const canShare = await Sharing.isAvailableAsync();
   if (canShare) {
@@ -286,6 +328,7 @@ export async function createEncryptedBackup(passphraseInput: string): Promise<Ba
     itemCount: payload.items.length,
     assetCount: payload.assets.length,
     shared: canShare,
+    savedToFileManager: false,
   };
 }
 

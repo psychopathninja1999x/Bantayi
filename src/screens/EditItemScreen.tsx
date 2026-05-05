@@ -7,6 +7,7 @@ import { useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Image as NativeImage,
   Modal,
   Platform,
   Pressable,
@@ -201,7 +202,7 @@ export default function EditItemScreen() {
       if (details.length === 0) {
         Alert.alert(
           'No dates detected',
-          'The photo was attached, but BanTayi could not confidently detect dates from the image.',
+          'The photo was saved as visual proof. No expiry, warranty, issue, or purchase date was detected, so you can enter the details manually.',
         );
         return;
       }
@@ -221,7 +222,7 @@ export default function EditItemScreen() {
       const scan = await scanVisualProof(source);
       if (!scan) return;
       setPhotoUri(scan.photoUri);
-      askToApplyDetectedProof(scan.detected, scan.ocrText != null);
+      askToApplyDetectedProof(scan.detected, scan.ocrAvailable);
     } catch (e) {
       const message = e instanceof Error ? e.message : 'Could not attach the visual proof.';
       setFormError(message);
@@ -684,7 +685,12 @@ export default function EditItemScreen() {
               </AppText>
               {photoUri ? (
                 <GlassCard radius="xxl" padded="sm">
-                  <Image source={{ uri: photoUri }} style={styles.preview} contentFit="cover" />
+                  <NativeImage
+                    key={photoUri}
+                    source={{ uri: photoUri }}
+                    style={styles.preview}
+                    resizeMode="cover"
+                  />
                   <View style={styles.photoActions}>
                     <AppButton
                       variant="outline"

@@ -1,11 +1,11 @@
 import { MaterialIcons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
-import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Image as NativeImage,
   Modal,
   Platform,
   Pressable,
@@ -364,7 +364,12 @@ export default function ItemDetailsScreen() {
                 Document preview
               </AppText>
               <GlassCard radius="xxl" padded="sm">
-                <Image source={{ uri: item.photo_uri }} style={styles.photo} contentFit="cover" />
+                <NativeImage
+                  key={item.photo_uri}
+                  source={{ uri: item.photo_uri }}
+                  style={styles.photo}
+                  resizeMode="cover"
+                />
               </GlassCard>
             </View>
           ) : null}

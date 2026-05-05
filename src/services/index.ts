@@ -18,6 +18,7 @@ export {
   getRemindersEnabled,
   onRemindersGloballyDisabled,
   onRemindersGloballyEnabled,
+  requestInitialReminderPermissionIfNeeded,
   requestNotificationPermissionIfNeeded,
   setRemindersEnabled,
   syncRemindersAfterItemChange,

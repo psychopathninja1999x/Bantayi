@@ -9,6 +9,7 @@ type CaptureSource = 'camera' | 'library';
 
 export interface VisualProofScan {
   photoUri: string;
+  ocrAvailable: boolean;
   ocrText: string | null;
   detected: DetectedVisualProof;
 }
@@ -66,17 +67,25 @@ async function pickImage(source: CaptureSource): Promise<ImagePicker.ImagePicker
   return result.canceled ? null : result.assets?.[0] ?? null;
 }
 
-async function recognizeTextFromImage(photoUri: string): Promise<string | null> {
+async function recognizeTextFromImage(
+  photoUri: string,
+): Promise<{ available: boolean; text: string | null }> {
   if (Constants.appOwnership === 'expo') {
-    return null;
+    return { available: false, text: null };
+  }
+
+  let recognizeText: (uri: string) => Promise<{ text: string }>;
+  try {
+    ({ recognizeText } = await import('@infinitered/react-native-mlkit-text-recognition'));
+  } catch {
+    return { available: false, text: null };
   }
 
   try {
-    const { recognizeText } = await import('@infinitered/react-native-mlkit-text-recognition');
     const result = await recognizeText(photoUri);
-    return result.text.trim() || null;
+    return { available: true, text: result.text.trim() || null };
   } catch {
-    return null;
+    return { available: true, text: null };
   }
 }
 
@@ -262,10 +271,11 @@ export async function scanVisualProof(source: CaptureSource): Promise<VisualProo
   if (!asset) return null;
 
   const photoUri = await copyAssetToAppDirectory(asset);
-  const ocrText = await recognizeTextFromImage(photoUri);
+  const ocr = await recognizeTextFromImage(photoUri);
   return {
     photoUri,
-    ocrText,
-    detected: detectVisualProofDetails(ocrText),
+    ocrAvailable: ocr.available,
+    ocrText: ocr.text,
+    detected: detectVisualProofDetails(ocr.text),
   };
 }

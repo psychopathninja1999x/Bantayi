@@ -16,6 +16,7 @@ import {
 } from '@/src/components';
 import { colors, spacing } from '@/src/constants/colors';
 import { ROUTES } from '@/src/constants/routes';
+import { requestInitialReminderPermissionIfNeeded } from '@/src/services';
 import { saveProfile } from '@/src/services/profile';
 import { parseOptionalISODate } from '@/src/utils/dates';
 
@@ -45,6 +46,7 @@ export default function ProfileSetupScreen() {
         nickname,
         birthday: parsedBirthday.value,
       });
+      await requestInitialReminderPermissionIfNeeded();
       router.replace(ROUTES.home);
     } catch (e) {
       const message = e instanceof Error ? e.message : 'Could not save profile.';

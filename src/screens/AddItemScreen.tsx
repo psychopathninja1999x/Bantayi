@@ -2,11 +2,13 @@ import { MaterialIcons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
+import type { ComponentProps } from 'react';
 import { useCallback, useMemo, useRef, useState } from 'react';
 import {
   Alert,
   Keyboard,
   KeyboardAvoidingView,
+  Image as NativeImage,
   Modal,
   Platform,
   Pressable,
@@ -24,11 +26,15 @@ import {
   CategoryIcon,
   GlassCard,
   GlassHeader,
+  ItemLogo,
   ScreenBackground,
 } from '@/src/components';
 import { CATEGORIES } from '@/src/constants/categories';
 import { colors, fontFamily, radii, spacing, typography } from '@/src/constants/colors';
-import { DOCUMENT_SUBCATEGORIES } from '@/src/constants/document-subcategories';
+import {
+  DOCUMENT_SUBCATEGORIES,
+  getDocumentSubcategoryInfo,
+} from '@/src/constants/document-subcategories';
 import type { DocumentSubcategory } from '@/src/constants/document-subcategories';
 import { PHILIPPINE_BANK_SUGGESTIONS } from '@/src/constants/philippine-banks';
 import { ROUTES } from '@/src/constants/routes';
@@ -42,7 +48,7 @@ import {
 } from '@/src/services/online-logo-search';
 import { scanVisualProof } from '@/src/services/visual-proof';
 import type { DetectedVisualProof } from '@/src/services/visual-proof';
-import type { ItemCategory } from '@/src/types';
+import type { Item, ItemCategory } from '@/src/types';
 import { parseOptionalISODate, parseOptionalReminderDays } from '@/src/utils/dates';
 
 const STEPS = ['Proof', 'Name', 'Logo', 'Dates', 'Storage'] as const;
@@ -99,6 +105,7 @@ export default function AddItemScreen() {
   const [onlineLogoResults, setOnlineLogoResults] = useState<OnlineLogoResult[]>([]);
   const [activeDateField, setActiveDateField] = useState<DateField | null>(null);
   const [selectedBank, setSelectedBank] = useState<string | null>(null);
+  const [successItem, setSuccessItem] = useState<Item | null>(null);
 
   const clearError = useCallback(() => setFormError(null), []);
 
@@ -169,7 +176,7 @@ export default function AddItemScreen() {
       if (details.length === 0) {
         Alert.alert(
           'No dates detected',
-          'The photo was attached, but BanTayi could not confidently detect dates from the image.',
+          'The photo was saved as visual proof. No expiry, warranty, issue, or purchase date was detected, so you can enter the details manually.',
         );
         return;
       }
@@ -190,7 +197,7 @@ export default function AddItemScreen() {
         const scan = await scanVisualProof(source);
         if (!scan) return;
         setPhotoUri(scan.photoUri);
-        askToApplyDetectedProof(scan.detected, scan.ocrText != null);
+        askToApplyDetectedProof(scan.detected, scan.ocrAvailable);
       } catch (e) {
         const message = e instanceof Error ? e.message : 'Could not attach the visual proof.';
         setFormError(message);
@@ -298,6 +305,15 @@ export default function AddItemScreen() {
     setStep((current) => Math.max(current - 1, 0));
   }, [clearError]);
 
+  const finishAddSuccess = useCallback(() => {
+    setSuccessItem(null);
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace(ROUTES.home);
+    }
+  }, [router]);
+
   const save = useCallback(async () => {
     nameInputRef.current?.blur();
     Keyboard.dismiss();
@@ -332,7 +348,7 @@ export default function AddItemScreen() {
 
     setSaving(true);
     try {
-      await createItem({
+      const created = await createItem({
         title: trimmedTitle,
         category,
         subcategory: category === 'document' ? documentSubcategory : null,
@@ -347,11 +363,7 @@ export default function AddItemScreen() {
         logo_uri: logoUri,
       });
 
-      if (router.canGoBack()) {
-        router.back();
-      } else {
-        router.replace(ROUTES.home);
-      }
+      setSuccessItem(created);
     } catch (e) {
       const message =
         e instanceof DatabaseError
@@ -375,7 +387,6 @@ export default function AddItemScreen() {
     photoUri,
     purchaseDate,
     reminderDays,
-    router,
     title,
     warrantyUntil,
   ]);
@@ -447,7 +458,12 @@ export default function AddItemScreen() {
               <View style={styles.proofStep}>
                 {photoUri ? (
                   <View style={styles.previewWrap}>
-                    <Image source={{ uri: photoUri }} style={styles.heroPreview} contentFit="cover" />
+                    <NativeImage
+                      key={photoUri}
+                      source={{ uri: photoUri }}
+                      style={styles.heroPreview}
+                      resizeMode="cover"
+                    />
                     <View style={styles.previewBadge}>
                       <MaterialIcons name="verified" size={18} color={colors.onPrimary} />
                       <AppText variant="labelMd" color={colors.onPrimary}>
@@ -954,6 +970,7 @@ export default function AddItemScreen() {
               }}
             />
           ) : null}
+          <AddedItemSuccessModal item={successItem} onDone={finishAddSuccess} />
         </KeyboardAvoidingView>
       </SafeAreaView>
     </ScreenBackground>
@@ -966,6 +983,114 @@ interface DatePickerFieldProps {
   onPress: () => void;
   onClear: () => void;
   disabled?: boolean;
+}
+
+function AddedItemSuccessModal({ item, onDone }: { item: Item | null; onDone: () => void }) {
+  if (!item) return null;
+
+  const categoryLabel = CATEGORIES.find((c) => c.code === item.category)?.label ?? item.category;
+  const subcategoryLabel =
+    item.category === 'document' ? getDocumentSubcategoryInfo(item.subcategory)?.label : null;
+  const categoryLine = subcategoryLabel ? `${categoryLabel} - ${subcategoryLabel}` : categoryLabel;
+  const deadlineLine = item.no_expiry
+    ? 'No expiry'
+    : [item.expiry_date ? `Expiry ${item.expiry_date}` : null, item.warranty_until ? `Warranty ${item.warranty_until}` : null]
+        .filter(Boolean)
+        .join(' / ');
+  const reminderLine = item.no_expiry
+    ? 'Not needed'
+    : item.reminder_days_before == null
+      ? 'Not set'
+      : `${item.reminder_days_before} day${item.reminder_days_before === 1 ? '' : 's'} before`;
+
+  return (
+    <Modal transparent animationType="fade" visible onRequestClose={onDone}>
+      <View style={styles.successOverlay}>
+        <View style={styles.successSheet}>
+          <View style={styles.successTop}>
+            <View style={styles.successLogoHalo}>
+              <ItemLogo
+                category={item.category}
+                subcategory={item.subcategory}
+                logoUri={item.logo_uri}
+                size={76}
+              />
+              <View style={styles.successCheck}>
+                <MaterialIcons name="check" size={18} color={colors.onPrimary} />
+              </View>
+            </View>
+            <View style={styles.successCopy}>
+              <AppText variant="headlineLg" color={colors.primary} center>
+                Added to your vault
+              </AppText>
+              <AppText variant="bodyMd" color={colors.onSurfaceVariant} center>
+                BanTayi is now watching this item on your device.
+              </AppText>
+            </View>
+          </View>
+
+          <GlassCard radius="xxl" padded="md" style={styles.successSummaryCard}>
+            <View style={styles.successTitleRow}>
+              <MaterialIcons name="verified-user" size={22} color={colors.primary} />
+              <View style={styles.successTitleText}>
+                <AppText variant="headlineMd" color={colors.onSurface} numberOfLines={2}>
+                  {item.title}
+                </AppText>
+                <AppText variant="labelSm" color={colors.onSurfaceVariant} uppercase numberOfLines={1}>
+                  {categoryLine}
+                </AppText>
+              </View>
+            </View>
+
+            <View style={styles.successDetails}>
+              <SuccessDetail icon="event" label="Deadline" value={deadlineLine || 'Not set'} />
+              <SuccessDetail icon="notifications" label="Reminder" value={reminderLine} />
+              <SuccessDetail
+                icon="inventory-2"
+                label="Storage"
+                value={item.description?.trim() || 'Not specified'}
+              />
+              <SuccessDetail
+                icon="photo-camera"
+                label="Visual proof"
+                value={item.photo_uri ? 'Attached' : 'None'}
+              />
+            </View>
+          </GlassCard>
+
+          <AppButton variant="primary" icon="done" onPress={onDone} style={styles.successButton}>
+            Done
+          </AppButton>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+function SuccessDetail({
+  icon,
+  label,
+  value,
+}: {
+  icon: ComponentProps<typeof MaterialIcons>['name'];
+  label: string;
+  value: string;
+}) {
+  return (
+    <View style={styles.successDetailRow}>
+      <View style={styles.successDetailIcon}>
+        <MaterialIcons name={icon} size={18} color={colors.primary} />
+      </View>
+      <View style={styles.successDetailText}>
+        <AppText variant="labelSm" color={colors.onSurfaceVariant} uppercase>
+          {label}
+        </AppText>
+        <AppText variant="labelMd" color={colors.onSurface} numberOfLines={2}>
+          {value}
+        </AppText>
+      </View>
+    </View>
+  );
 }
 
 function DatePickerField({ label, value, onPress, onClear, disabled }: DatePickerFieldProps) {
@@ -1066,7 +1191,8 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surfaceContainer,
   },
   heroPreview: {
-    flex: 1,
+    width: '100%',
+    height: '100%',
   },
   previewBadge: {
     position: 'absolute',
@@ -1420,5 +1546,90 @@ const styles = StyleSheet.create({
   },
   iosPicker: {
     minHeight: 340,
+  },
+  successOverlay: {
+    flex: 1,
+    justifyContent: 'center',
+    padding: spacing.lg,
+    backgroundColor: colors.scrimDim,
+  },
+  successSheet: {
+    borderRadius: radii.xxl,
+    borderWidth: 1,
+    borderColor: colors.glassBorder,
+    backgroundColor: colors.surfaceContainerLowest,
+    padding: spacing.lg,
+    gap: spacing.md,
+    shadowColor: colors.primaryContainer,
+    shadowOffset: { width: 0, height: 18 },
+    shadowOpacity: 0.24,
+    shadowRadius: 28,
+    elevation: 10,
+  },
+  successTop: {
+    alignItems: 'center',
+    gap: spacing.md,
+  },
+  successLogoHalo: {
+    width: 110,
+    height: 110,
+    borderRadius: radii.xxl,
+    backgroundColor: colors.primaryFixed,
+    borderWidth: 1,
+    borderColor: colors.glassBorder,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  successCheck: {
+    position: 'absolute',
+    right: 12,
+    bottom: 10,
+    width: 30,
+    height: 30,
+    borderRadius: radii.pill,
+    backgroundColor: colors.primaryContainer,
+    borderWidth: 2,
+    borderColor: colors.surfaceContainerLowest,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  successCopy: {
+    gap: 4,
+  },
+  successSummaryCard: {
+    borderColor: colors.glassBorder,
+  },
+  successTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  successTitleText: {
+    flex: 1,
+    gap: 2,
+  },
+  successDetails: {
+    marginTop: spacing.md,
+    gap: spacing.sm,
+  },
+  successDetailRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  successDetailIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: radii.lg,
+    backgroundColor: colors.primaryFixed,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  successDetailText: {
+    flex: 1,
+    gap: 1,
+  },
+  successButton: {
+    marginTop: spacing.xs,
   },
 });

@@ -13,6 +13,7 @@ export default function MainLayout() {
       <Stack.Screen name="(tabs)" />
       <Stack.Screen name="add-item" />
       <Stack.Screen name="backup-restore" />
+      <Stack.Screen name="notifications" />
       <Stack.Screen name="edit-item/[id]" />
       <Stack.Screen name="item-details/[id]" />
     </Stack>

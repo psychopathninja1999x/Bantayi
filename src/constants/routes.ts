@@ -12,6 +12,7 @@ export const ROUTES = {
   vault: '/vault',
   search: '/search',
   settings: '/settings',
+  notifications: '/notifications',
   addItem: '/add-item',
   backupRestore: '/backup-restore',
   changePin: '/change-pin',

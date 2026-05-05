@@ -10,6 +10,7 @@ import {
 } from '@/src/database/items';
 
 const PREF_KEY = 'bantayi_local_reminders_enabled';
+const INITIAL_PERMISSION_ASKED_KEY = 'bantayi_initial_reminder_permission_asked';
 const ANDROID_CHANNEL = 'bantayi-reminders';
 
 function escapeTitle(title: string): string {
@@ -43,6 +44,24 @@ export async function requestNotificationPermissionIfNeeded(): Promise<boolean> 
   if (existing === 'granted') return true;
   const { status } = await Notifications.requestPermissionsAsync();
   return status === 'granted';
+}
+
+/**
+ * First-install onboarding request. This runs once after the local profile is saved,
+ * then Settings remains the place to re-enable reminders if the user declines.
+ */
+export async function requestInitialReminderPermissionIfNeeded(): Promise<boolean> {
+  if (Platform.OS === 'web') return false;
+
+  const asked = await SecureStore.getItemAsync(INITIAL_PERMISSION_ASKED_KEY);
+  if (asked === '1') {
+    return Notifications.getPermissionsAsync().then(({ status }) => status === 'granted');
+  }
+
+  const granted = await requestNotificationPermissionIfNeeded();
+  await setRemindersEnabled(granted);
+  await SecureStore.setItemAsync(INITIAL_PERMISSION_ASKED_KEY, '1');
+  return granted;
 }
 
 export async function cancelNotificationsForItem(item: {

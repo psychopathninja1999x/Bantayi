@@ -1,11 +1,13 @@
 import { MaterialIcons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
+import type { Href } from 'expo-router';
 import { useRouter } from 'expo-router';
 import type { ReactNode } from 'react';
 import { Platform, Pressable, StyleSheet, useColorScheme, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { getColors, spacing } from '@/src/constants/colors';
+import { ROUTES } from '@/src/constants/routes';
 
 import { AppText } from './Text';
 import { BantayLogo } from './BantayLogo';
@@ -19,11 +21,20 @@ export interface GlassHeaderProps {
   back?: boolean;
   /** Right-side cluster (e.g. action buttons, avatars). */
   right?: ReactNode;
+  /** Show the notification shortcut when no custom right-side content is supplied. */
+  notifications?: boolean;
   /** Tag inside header (e.g. "Offline only"). */
   tag?: string;
 }
 
-export function GlassHeader({ brand = true, title, back, right, tag }: GlassHeaderProps) {
+export function GlassHeader({
+  brand = true,
+  title,
+  back,
+  right,
+  notifications = true,
+  tag,
+}: GlassHeaderProps) {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const scheme = useColorScheme();
@@ -33,6 +44,8 @@ export function GlassHeader({ brand = true, title, back, right, tag }: GlassHead
   const onBack = () => {
     if (router.canGoBack()) router.back();
   };
+
+  const showNotifications = notifications && !right && !back;
 
   return (
     <View style={[styles.wrap, { paddingTop: insets.top, borderBottomColor: palette.glassBorderSoft }]}>
@@ -82,7 +95,27 @@ export function GlassHeader({ brand = true, title, back, right, tag }: GlassHead
             </View>
           ) : null}
         </View>
-        <View style={styles.rightCol}>{right}</View>
+        <View style={styles.rightCol}>
+          {right}
+          {showNotifications ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Open notifications"
+              onPress={() => router.push(ROUTES.notifications as Href)}
+              style={({ pressed }) => [
+                styles.iconBtn,
+                styles.bellBtn,
+                {
+                  backgroundColor: pressed
+                    ? palette.surfaceContainerHighest
+                    : palette.surfaceContainerLowest,
+                  borderColor: palette.glassBorder,
+                },
+              ]}>
+              <MaterialIcons name="notifications-none" size={23} color={palette.primary} />
+            </Pressable>
+          ) : null}
+        </View>
       </View>
     </View>
   );
@@ -119,6 +152,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 999,
+  },
+  bellBtn: {
+    borderWidth: 1,
   },
   logo: {
     width: 28,
